@@ -18,41 +18,45 @@ export default function PostForm({ post }) {
     const navigate = useNavigate();
     const userData = useSelector((state) => state.auth.userData);
 ////////////////////////////////////////////////////////////////
-        const submit = async (data) => {
-        try {
-            if (post) {
-                const file = data.image[0] ? await appwriteService.uploadFile(data.image[0]) : null;
-    
-                if (file) {
-                    await appwriteService.deleteFile(post.featuredimage); // Ensure correct property name
-                }
-    
-                const dbPost = await appwriteService.updatePost(post.$id, {
+       const submit = async (data) => {
+    try {
+        if (post) {
+            const file = data.image[0] ? await appwriteService.uploadFile(data.image[0]) : null;
+
+            if (file && file.$id) {  
+                await appwriteService.deleteFile(post.featuredimage);
+            }
+
+            const dbPost = await appwriteService.updatePost(post.$id, {
+                ...data,
+                featuredimage: file ? file.$id : post.featuredimage, 
+            });
+
+            if (dbPost && dbPost.$id) {  
+                navigate(`/post/${dbPost.$id}`);
+            }
+        } else {
+            const file = await appwriteService.uploadFile(data.image[0]);
+
+            if (file && file.$id) {  
+                const fileId = file.$id;
+                data.featuredimage = fileId; 
+
+                const dbPost = await appwriteService.createPost({
                     ...data,
-                    featuredimage: file ? file.$id :post.featuredimage,
+                    userid: userData.$id,  
                 });
-    
-                if (dbPost) {
+
+                if (dbPost && dbPost.$id) {  
                     navigate(`/post/${dbPost.$id}`);
                 }
-            } else {
-                const file = await appwriteService.uploadFile(data.image[0]);
-    
-                if (file) {
-                    const fileId = file.$id;
-                    data.featuredimage = fileId; // Ensure correct property name
-                    const dbPost = await appwriteService.createPost({ ...data, userid: userData.$id, });
-    
-                    if (dbPost) {
-                        navigate(`/post/${dbPost.$id}`);
-                    }
-                }
             }
-        } catch (error) {
-            console.log("Error while submitting post:", error);
-            // Handle error gracefully, e.g., show a toast message or log it
         }
-    };
+    } catch (error) {
+        console.log("Error while submitting post:", error);
+    }
+};
+
 ////////////////////////////////////////////////////////////////    
     const slugTransform = useCallback((value) => {
         if (value && typeof value === "string") {
